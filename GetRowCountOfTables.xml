@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for Windows (x86-64) 2021.1.2 (Build 338U)" ts="2022-09-20 15:00:01">
+<Class name="Sample.GetRowCountOfTables">
+<Super>%RegisteredObject</Super>
+<TimeChanged>66372,53798.50063</TimeChanged>
+<TimeCreated>66130,63716.961939</TimeCreated>
+
+<Query name="TableRowCounts">
+<Type>%Query</Type>
+<FormalSpec>name:%String="%"</FormalSpec>
+<SqlProc>1</SqlProc>
+<Parameter name="ROWSPEC" value="TableName:%String,Count:%Integer"/>
+</Query>
+
+<Method name="TableRowCountsExecute">
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[&qHandle:%Binary,name:%String="%"]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	if name="" set name="%"
+	
+	set stmt=##class(%SQL.Statement).%New()
+	set status=stmt.%Prepare("select table_schema || '.' || table_name name from INFORMATION_SCHEMA.TABLES where table_type = 'BASE TABLE' and table_schema || '.' || table_name like ?")
+	if $$$ISERR(status) Quit status
+	set resultset=stmt.%Execute(name)
+	while resultset.%Next() {
+		set qHandle(resultset.%GetData(1))=""
+	}
+	set resultset="",stmt=""
+		
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="TableRowCountsClose">
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[&qHandle:%Binary]]></FormalSpec>
+<PlaceAfter>TableRowCountsExecute</PlaceAfter>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="TableRowCountsFetch">
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[&qHandle:%Binary,&Row:%List,&AtEnd:%Integer=0]]></FormalSpec>
+<PlaceAfter>TableRowCountsExecute</PlaceAfter>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set Row=""
+	set table=$Order(qHandle("")) 
+	if table="" Set AtEnd=1 Quit $$$OK
+	
+	set stmt=##class(%SQL.Statement).%New()
+	set status=stmt.%Prepare("select count(*) from "_table)
+	if $$$ISERR(status) {
+		set Row=$LB(table,-1)
+		kill qHandle(table)
+		Quit $$$OK
+	}
+	
+	set resultset=stmt.%Execute()
+	if resultset.%Next() {
+		set Row=$LB(table,resultset.%GetData(1))
+	} else {
+		set Row=$LB(table,-1)
+	}
+	set resultset="",stmt=""
+	
+	kill qHandle(table)
+	
+	Quit $$$OK
+]]></Implementation>
+</Method>
+</Class>
+</Export>
